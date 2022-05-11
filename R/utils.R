@@ -58,7 +58,7 @@ ks.missing <- function(xx, yy, samp_size, xx.test){ # rr should be T/F values
 
 
 ##
-# ks(X[R==1,], Y2[R==1] >= Y1[R==1] + 5, X[R==0,])
+# ks(X[R==1,], Y2[R==1] >= Z[R==1] + 5, X[R==0,])
 
 ### soft thresholding
 # soft.Thresh <- function(beta, thresh){
@@ -68,29 +68,29 @@ ks.missing <- function(xx, yy, samp_size, xx.test){ # rr should be T/F values
 
 
 ## Propensity score
-fun.ps.model <- function(X, Y1, R, model.type){
+fun.ps.model <- function(X, Z, R, model.type){
   if(sum(R==0)> 0){
     if(model.type=='glm'){
-      glm.data <- data.frame(R=R, X=X, Y1=Y1)
+      glm.data <- data.frame(R=R, X=X, Z=Z)
       model <- glm(R ~ .-1, data = glm.data, family = "binomial")
     }else if(model.type=='glmnet'){
-      cv.lasso.model <- cv.glmnet(x = cbind(X, Y1=Y1), y = R, family = "binomial", intercept=F)
+      cv.lasso.model <- cv.glmnet(x = cbind(X, Z=Z), y = R, family = "binomial", intercept=F)
       # cv.lasso.model
       coef(cv.lasso.model, s="lambda.min")
-      model <- glmnet(x = cbind(X, Y1= Y1), y = R, family = "binomial", intercept = F, lambda=cv.lasso.model$lambda.min)
+      model <- glmnet(x = cbind(X, Z= Z), y = R, family = "binomial", intercept = F, lambda=cv.lasso.model$lambda.min)
     }
 
     ## Conditional expectation with kernel smoother regression
   }else { model <- NULL }
   return(model)
 }
-get.ps <- function(model=NULL, X, Y1){
+get.ps <- function(model=NULL, X, Z){
   if(!is.null(model)){
     if(sum(class(model)=="glm")>0){
-      ps <- predict(model, newdata = data.frame(X=X, Y1=Y1), type='response')
+      ps <- predict(model, newdata = data.frame(X=X, Z=Z), type='response')
 
     }else if(sum(class(model)=="glmnet")>0){
-      ps <- predict(model, newx = cbind(X, Y1), type = "response")
+      ps <- predict(model, newx = cbind(X, Z), type = "response")
     }else ps <- NULL
   }
   else ps <- NULL
@@ -99,12 +99,12 @@ get.ps <- function(model=NULL, X, Y1){
 
 ## Get nuisance model
 
-getNuisance <- function(data, outcome=c('R', 'fun.h'), method=c('lm', 'glmnet', 'kernel', 'density.ratio', 'true'), dimension.reduction = c("None", 'true', 'Screening', "slicedIR"),
+getNuisance <- function(data, outcome=c('R', 'y'), method=c('lm', 'glmnet', 'kernel', 'density.ratio', 'true'), dimension.reduction = c("None", 'true', 'Screening', "slicedIR"),
                         sampleSplitIndex = NULL, Formula = NULL, predictAll = FALSE, screening.method="SIRS"){
-  # if outcome = R, provide propensity score; if outcome = fun.h, provide the conditional expectation
+  # if outcome = R, provide propensity score; if outcome = y, provide the conditional expectation
 
 
-  data$predictor <- cbind(data$X, Y1=data$Y1)
+  data$predictor <- cbind(data$X, Z=data$Z)
   p <- dim(data$predictor)[2]
   size <- dim(data$predictor)[1]
 
@@ -142,7 +142,7 @@ getNuisance <- function(data, outcome=c('R', 'fun.h'), method=c('lm', 'glmnet', 
   } else if(dimension.reduction == "true"){
     if(outcome == "R") {
       supp <- c(rep(c(T,F), 4), rep(F,p-8-1))
-    }else if(outcome == "fun.h"){
+    }else if(outcome == "y"){
       supp <- c(rep(T,4), rep(F, p-4-1))
     }
   }
@@ -217,7 +217,7 @@ getNuisance <- function(data, outcome=c('R', 'fun.h'), method=c('lm', 'glmnet', 
   #     }
   #
   #     prediction <- 1/(1+exp(-dataPredict %*% beta_R))
-  #   }else if (outcome == "fun.h"){
+  #   }else if (outcome == "y"){
   #     beta0 <- c(1,-1,0.5,-0.5, rep(0, times=(p-1)-4))
   #     prediction <- 1/(1+exp(-(data$X%*%beta0)) )
   #   }
@@ -247,20 +247,20 @@ truncated <- function(values, thres = 0.1){
 }
 
 
-loss_1st <- function(samples, nuisance, beta_est, method = c("kernel", "glmnet", "true"), h_type){
+# loss_1st <- function(samples, nuisance, beta_est, method = c("kernel", "glmnet", "true"), y_type){
+#
+#   X <- samples$X; R <- samples$R; y <- samples$y;
+#   missingness <- nuisance$missingness; impute <- nuisance$impute; missingness_glmnet <- nuisance$missingness_glmnet
+#
+#   if(method %in% c('kernel', 'true')){
+#     t(X) %*% ((impute  - y )*R/missingness) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
+#   }else if(method=="glmnet"){
+#     t(X) %*% ((impute  - y )*R/missingness_glmnet) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
+#   }
+#
+# }
 
-  X <- samples$X; R <- samples$R; fun.h <- samples$fun.h;
-  missingness <- nuisance$missingness; impute <- nuisance$impute; missingness_glmnet <- nuisance$missingness_glmnet
-
-  if(method %in% c('kernel', 'true')){
-    t(X) %*% ((impute  - fun.h )*R/missingness) + t(X) %*% ( b_1st(X, beta_est, h_type)-impute)
-  }else if(method=="glmnet"){
-    t(X) %*% ((impute  - fun.h )*R/missingness_glmnet) + t(X) %*% ( b_1st(X, beta_est, h_type)-impute)
-  }
-
-}
-
-loss_1st_boot <- function(samples, nuisance, beta_est, h_type, intercept){
+loss_1st_boot <- function(samples, nuisance, beta_est, y_type, intercept){
 
   if(intercept){
     X <- cbind(1,samples$X)
@@ -268,40 +268,40 @@ loss_1st_boot <- function(samples, nuisance, beta_est, h_type, intercept){
     X <- samples$X
     beta_est <- beta_est[-1,]
   }
-  R <- samples$R; fun.h <- samples$fun.h;
+  R <- samples$R; y <- samples$y;
   missingness <- nuisance$missingness; impute <- nuisance$impute;
 
-  # t(X) %*% ((impute  - fun.h )*R/missingness) + t(X) %*% ( b_1st(X, beta_est, h_type)-impute)
-  t(X[R==1,]) %*% matrix((impute[R==1]  - fun.h[R==1] )/missingness[R==1]) + t(X) %*% ( b_1st(X, beta_est, h_type)-impute)
+  # t(X) %*% ((impute  - y )*R/missingness) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
+  t(X[R==1,]) %*% matrix((impute[R==1]  - y[R==1] )/missingness[R==1]) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
 
 }
 
 # b_1st <- function(X, beta_tilde){
 #
 # }
-b_1st <- function(X, beta_tilde, h_type){
-  if(h_type=="indicator"){
+b_1st <- function(X, beta_tilde, y_type){
+  if(y_type=="binary"){
     1/(1+exp(-X %*% beta_tilde))
-  }else if (h_type == "difference"){
+  }else if (y_type == "continuous"){
     X %*% beta_tilde
   }
 }
 
-b_2nd <- function(X, beta_tilde, h_type){
-  if(h_type == "indicator"){
+b_2nd <- function(X, beta_tilde, y_type){
+  if(y_type == "binary"){
     exp(-X %*% beta_tilde)/(1+exp(-X %*% beta_tilde))^2
-  }else if(h_type == "difference"){
+  }else if(y_type == "continuous"){
     rep(1, nrow(X))
   }
 }
 
 
-fun_I <- function(X, interest_idx, beta_tilde, w_hat, intercept, h_type){
+fun_I <- function(X, interest_idx, beta_tilde, w_hat, intercept, y_type){
   if(intercept){
     X <- cbind(1, X); interest_idx <- interest_idx + 1
-    mean(b_2nd(X, beta_tilde, h_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
+    mean(b_2nd(X, beta_tilde, y_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
   }else{
-    mean(b_2nd(X, beta_tilde[-1,], h_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
+    mean(b_2nd(X, beta_tilde[-1,], y_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
   }
 
 
@@ -310,14 +310,14 @@ fun_I <- function(X, interest_idx, beta_tilde, w_hat, intercept, h_type){
 make_sub <- function(samples, sampleSplitIndex, sample.div = T){
   samples_sub <- list()
   samples_sub$X <- samples$X[sampleSplitIndex == sample.div,] ;
-  if(NCOL(samples$Y1)>1){
-    samples_sub$Y1 <- samples$Y1[sampleSplitIndex == sample.div,];
+  if(NCOL(samples$Z)>1){
+    samples_sub$Z <- samples$Z[sampleSplitIndex == sample.div,];
   }else{
-    samples_sub$Y1 <- samples$Y1[sampleSplitIndex == sample.div];
+    samples_sub$Z <- samples$Z[sampleSplitIndex == sample.div];
   }
 
   samples_sub$R <- samples$R[sampleSplitIndex == sample.div];
-  samples_sub$fun.h <- samples$fun.h[sampleSplitIndex == sample.div]
+  samples_sub$y <- samples$y[sampleSplitIndex == sample.div]
   samples_sub
 }
 

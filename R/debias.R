@@ -2,28 +2,28 @@
 
 
 
-fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercept = F, thres_w = 0, variance=F, conditioning = c("X", "Y1X"),
+fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercept = F, thres_w = 0, variance=F, conditioning = c("X", "ZX"),
                          pi.method = c("true", "kernel", "glmnet"), dim.reduction = c("separate", "onlyQ"),
                          supp.pi = NULL, supp.Q = NULL, beta_initial = NULL){
 
   #### variable assignments #####
-  X <- samples$X; Y1 <- samples$Y1; R <- samples$R; fun.h <- samples$fun.h
+  X <- samples$X; Z <- samples$Z; R <- samples$R; y <- samples$y
   n <- nrow(X); p <- ncol(X);
-  if(length(unique(fun.h)[!is.na(unique(fun.h))])==2 ){
-    h_type <- "binary"
-  }else { h_type <- "continuous"}
+  if(length(unique(y)[!is.na(unique(y))])==2 ){
+    y_type <- "binary"
+  }else { y_type <- "continuous"}
 
   if(intercept){
-    interest_lst <- c(0, interest_lst)
+    interest_var <- c(0, interest_var)
   }
 
   #### model for missingness ####
   if(pi.method == "glmnet"){
     if(intercept){
-      missingness_glmnet <- b_1st(cbind(1, X), beta_tilde = supp.pi, h_type = "binary")
+      missingness_glmnet <- b_1st(cbind(1, X), beta_tilde = supp.pi, y_type = "binary")
     }else{
       supp.pi <- supp.pi[-1]
-      missingness_glmnet <- b_1st(X, beta_tilde = supp.pi, h_type = "binary")
+      missingness_glmnet <- b_1st(X, beta_tilde = supp.pi, y_type = "binary")
     }
 
     missingness_glmnet <- truncated(missingness_glmnet, thres = thres_w)
@@ -32,14 +32,14 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
 
   if(conditioning == "X"){
     combined_dataset <- X
-  }else if(conditioning == "Y1X"){
-    combined_dataset <- cbind(Y1= Y1, X)
+  }else if(conditioning == "ZX"){
+    combined_dataset <- cbind(Z=Z, X)
   }
 
 
   if(pi.method %in% c("glmnet", "kernel")){
     ### STEP 1 ####
-    # dim.reduction.Q <- mave(fun.h ~ ., data = data.frame(fun.h=fun.h[R==1], combined_dataset[R==1,]), method =
+    # dim.reduction.Q <- mave(y ~ ., data = data.frame(y=y[R==1], combined_dataset[R==1,]), method =
     #                           "KSIR") #"KSIR"
     # cv.mave <- mave.dim(dim.reduction.Q)
 
@@ -50,12 +50,10 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
 
     if(is.null(beta_initial)){
       if(!is.null(supp.Q)){
-        # supp.Q <- as.matrix(dim.reduction.Q$dir[[cv.mave$dim.min]])
-        # supp.Q <-  as.matrix(dim.reduction.Q$dir[[length(dim.reduction.Q$dir)]])
-        imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]) %*% supp.Q, yy = fun.h[R==1], xx.test = as.matrix(combined_dataset) %*% supp.Q)
+        imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]) %*% supp.Q, yy = y[R==1], xx.test = as.matrix(combined_dataset) %*% supp.Q)
         #### here
       }else{
-        imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]), yy = fun.h[R==1], xx.test = as.matrix(combined_dataset))
+        imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]), yy = y[R==1], xx.test = as.matrix(combined_dataset))
       }
 
       beta_initial <- get_initial(samples = samples, impute = imputed_entire, intercept = intercept)
@@ -66,11 +64,7 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
   }
 
 
-
-
-
-
-  sim_results <- lapply(interest_lst, function(interest_idx){
+  sim_results <- lapply(interest_var, function(interest_idx){
 
 
 
@@ -79,10 +73,10 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
     if(intercept){ ### Still working
 
       if(interest_idx == 0){
-        mod_w <- glmnet(x =  X, y = rep(1, nrow(X)), intercept=FALSE, weights = b_2nd(cbind(1, X), beta_initial, h_type), lambda = 0)
+        mod_w <- glmnet::glmnet(x =  X, y = rep(1, nrow(X)), intercept=FALSE, weights = b_2nd(cbind(1, X), beta_initial, y_type), lambda = 0)
         w_est <- coef(mod_w)[-1,]
       }else{
-        mod_w <- glmnet(x =  X[, -interest_idx], y = X[,interest_idx], intercept=intercept, weights = b_2nd(cbind(1, X), beta_initial, h_type), lambda = 0)
+        mod_w <- glmnet::glmnet(x =  X[, -interest_idx], y = X[,interest_idx], intercept=intercept, weights = b_2nd(cbind(1, X), beta_initial, y_type), lambda = 0)
         w_est <- coef(mod_w)
       }
 
@@ -98,7 +92,7 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
     }else{
 
 
-      mod_w <- glmnet(x =  X[, -interest_idx], y = X[,interest_idx], intercept=intercept, weights = b_2nd(X, beta_initial[-1], h_type), lambda = 0) #beta_initial[-1]
+      mod_w <- glmnet::glmnet(x =  X[, -interest_idx], y = X[,interest_idx], intercept=intercept, weights = b_2nd(X, beta_initial[-1], y_type), lambda = 0) #beta_initial[-1]
       w_est <- coef(mod_w)[-1,]
 
       if(interest_idx ==1){
@@ -126,27 +120,27 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
 
         X_sub <- X[sampleSplitIndex==sample.div, ]
         combined_sub <- combined_dataset[sampleSplitIndex==sample.div,];
-        fun.h_sub <- fun.h[sampleSplitIndex==sample.div]; R_sub <- R[sampleSplitIndex==sample.div];
+        y_sub <- y[sampleSplitIndex==sample.div]; R_sub <- R[sampleSplitIndex==sample.div];
 
         X_opp <- X[sampleSplitIndex!=sample.div, ]
         combined_opp <- combined_dataset[sampleSplitIndex!=sample.div,];
-        fun.h_opp <- fun.h[sampleSplitIndex!=sample.div]; R_opp <- R[sampleSplitIndex!=sample.div];
+        y_opp <- y[sampleSplitIndex!=sample.div]; R_opp <- R[sampleSplitIndex!=sample.div];
 
-        if(NCOL(Y1)==1){
-          Y1_sub <- Y1[sampleSplitIndex==sample.div]
-          Y1_opp <- Y1[sampleSplitIndex!=sample.div]
+        if(NCOL(Z)==1){
+          Z_sub <- Z[sampleSplitIndex==sample.div]
+          Z_opp <- Z[sampleSplitIndex!=sample.div]
         }else{
-          Y1_sub <- Y1[sampleSplitIndex==sample.div,]
-          Y1_opp <- Y1[sampleSplitIndex!=sample.div,]
+          Z_sub <- Z[sampleSplitIndex==sample.div,]
+          Z_opp <- Z[sampleSplitIndex!=sample.div,]
         }
 
 
         # print(combined_sub[R_sub==1,])
 
         if(!is.null(supp.Q)){
-          impute_sub <- ks(xx=as.matrix(combined_sub[R_sub==1,])%*% supp.Q, yy = fun.h_sub[R_sub==1], xx.test = as.matrix(combined_opp) %*% supp.Q)
+          impute_sub <- ks(xx=as.matrix(combined_sub[R_sub==1,])%*% supp.Q, yy = y_sub[R_sub==1], xx.test = as.matrix(combined_opp) %*% supp.Q)
         }else{
-          impute_sub <- ks(xx=as.matrix(combined_sub[R_sub==1,]), yy = fun.h_sub[R_sub==1], xx.test = as.matrix(combined_opp))
+          impute_sub <- ks(xx=as.matrix(combined_sub[R_sub==1,]), yy = y_sub[R_sub==1], xx.test = as.matrix(combined_opp))
         }
 
         if(pi.method == "kernel"){
@@ -234,10 +228,10 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
       })
     }
 
-
+    # print(c(S_bar, I_bar));
 
     if(pi.method %in% c("glmnet", "kernel")){
-      I_bar <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept=intercept, h_type = h_type)
+      I_bar <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept=intercept, y_type = y_type)
       S_bar <- lapply(c(T,F), function(sample.div){
         samples_sub <- make_sub(samples, sampleSplitIndex, sample.div)
 
@@ -246,24 +240,25 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
 
           lapply(1:length(thres_w), function(idx){
             nuisance_sample <- nuisance[[1+sample.div]][[1]][[idx]]
-            loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, h_type = h_type, intercept = intercept)
+            loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept)
             S <- t(loss) %*% w_tilde / sum(sampleSplitIndex == sample.div)
             S
           })
         }else{
           nuisance_sample <- nuisance[[1+sample.div]]
-          loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, h_type = h_type, intercept = intercept)
+          loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept)
           S <- as.numeric(t(loss) %*% w_tilde / sum(sampleSplitIndex == sample.div))
           S
         }
 
       })
     }
+    # print(c(S_bar, I_bar));
 
     if(pi.method =="true" & variance == F){
       nuisance_true$missingness[nuisance_true$missingness < thres_w] <- thres_w
-      I_bar_true <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept = F, h_type = h_type)
-      S_bar_true <- t(loss_1st_boot(samples, nuisance_true, beta_est =  beta_initial, h_type = h_type, intercept = F)) %*% w_tilde / n
+      I_bar_true <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept = F, y_type = y_type)
+      S_bar_true <- t(loss_1st_boot(samples, nuisance_true, beta_est =  beta_initial, y_type = y_type, intercept = F)) %*% w_tilde / n
 
     }else{I_bar_true <- NULL; S_bar_true <- NULL}
 
@@ -272,16 +267,19 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
       if(variance ==F){
         prop.pihat <- sapply(1:length(thres_w), function(idx){ sum(sapply(lapply(lapply(nuisance, '[[',1), '[[',idx),'[[',3))/n})
       }else{prop.pihat <- NA}
-      c(initial = beta_initial[interest_idx+1,],
-        estimated_nuisance = beta_initial[interest_idx+1,]-
+      c(
+        # initial = beta_initial[interest_idx+1,],
+        debiased = beta_initial[interest_idx+1,]-
           sapply(1:length(thres_w), function(idx){colMeans(do.call('rbind', lapply(S_bar, "[[", idx)))}) / I_bar)
     }else if(pi.method == "glmnet"){
-      c(initial = beta_initial[interest_idx+1,],
-        estimated_nuisance = beta_initial[interest_idx+1,] -
+      c(
+        # initial = beta_initial[interest_idx+1,],
+        debiased = beta_initial[interest_idx+1,] -
           mean(unlist(S_bar)) / I_bar)
     }else if(pi.method == "true"){
-      c(true_initial = beta_initial[interest_idx+1,],
-        true_estimated_nuisance =  beta_initial[interest_idx+1,] - S_bar_true / I_bar_true)
+      c(
+        # true_initial = beta_initial[interest_idx+1,],
+        true_debiased =  beta_initial[interest_idx+1,] - S_bar_true / I_bar_true)
     }
 
 
@@ -293,76 +291,3 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_lst = 1, intercep
 
 }
 
-### get initial betas ####
-
-get_initial <- function(samples, impute, intercept = F){
-
-  X <- samples$X; Y1 <- samples$Y1; R <- samples$R; fun.h <- samples$fun.h
-  n <- nrow(X); p <- ncol(X);
-  if(length(unique(fun.h)[!is.na(unique(fun.h))])==2 ){
-    h_type <- "binary"
-  }else { h_type <- "continuous"}
-
-
-  count <- 1
-  if(h_type == "continuous"){
-    # mod_impute <- glmnet(x = X, y = impute_entire, intercept=intercept, lambda = 0)
-    mod_impute <- cv.glmnet(x = X, y = impute, intercept=intercept)
-  }else if(h_type == "binary"){
-    # mod_impute <- glmnet(x = rbind(X, X), y = factor(c(rep(0,n), rep(1, n))), weights = c(1-impute, impute), intercept=intercept, lambda = 0, family="binomial")
-    err_val <- 0; count <- 0
-    while(err_val == 0){
-      tryCatch({
-        mod_impute <- cv.glmnet(x = rbind(X, X), y = factor(c(rep(0,n), rep(1, n))), weights = c(1-impute, impute), intercept=intercept, family="binomial")
-        err_val <- 1
-      }, error = function(err){
-        err_val <- 0;
-        if(count >= 50){
-          message("Resampling is needed. Here is the original error message:")
-          message(err)
-          return(NA)
-        }
-        count <- count + 1
-      })
-    }
-  }
-  beta_initial <- coef(mod_impute, s = "lambda.min")
-  return(beta_initial)
-}
-
-
-#### Estimate nuisance functions #####
-
-predict_imputeQ <- function(training, test, nuisance_true = NULL, conditioning = c("X", "Y1X"),
-                            supp.Q = NULL){
-
-  #### variable assignments #####
-  X <- training$X; Y1 <- training$Y1; R <- training$R; fun.h <- training$fun.h
-  n <- nrow(X); p <- ncol(X);
-
-  X_te <- test$X; Y1_te <- test$Y1; R_te <- test$R; fun.h_te <- test$fun.h
-  n_te <- nrow(X_te);
-
-
-  #### model for missingness ####
-
-  if(conditioning == "X"){
-    combined_dataset <- X
-    combined_test <- X_te
-  }else if(conditioning == "Y1X"){
-    combined_dataset <- cbind(Y1= Y1, X)
-    combined_test <- cbind(Y1= Y1_te, X_te)
-  }
-
-
-
-  ### Q function ####
-  if(!is.null(supp.Q)){
-    impute_Q <- ks(xx=as.matrix(combined_dataset[R==1,]) %*% supp.Q, yy = fun.h[R==1], xx.test = as.matrix(combined_test) %*% supp.Q)
-
-  }else{
-    impute_Q <- ks(xx=as.matrix(combined_dataset[R==1,]), yy = fun.h[R==1], xx.test = as.matrix(combined_tes))
-  }
-
-  return(impute_Q)
-}
