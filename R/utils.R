@@ -296,12 +296,12 @@ b_2nd <- function(X, beta_tilde, y_type){
 }
 
 
-fun_I <- function(X, interest_idx, beta_tilde, w_hat, intercept, y_type){
+fun_I <- function(X, interest_var, beta_tilde, w_hat, intercept, y_type){
   if(intercept){
-    X <- cbind(1, X); interest_idx <- interest_idx + 1
-    mean(b_2nd(X, beta_tilde, y_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
+    X <- cbind(1, X); interest_var <- interest_var + 1
+    mean(as.matrix(b_2nd(X, beta_tilde, y_type) * X[,interest_var]* (X[,interest_var] -X[,-interest_var] %*% w_hat )))
   }else{
-    mean(b_2nd(X, beta_tilde[-1,], y_type) * X[,interest_idx]* (X[,interest_idx] -X[,-interest_idx] %*% w_hat ))
+    mean(b_2nd(X, beta_tilde[-1,], y_type) * X[,interest_var]* (X[,interest_var] -X[,-interest_var] %*% w_hat ))
   }
 
 

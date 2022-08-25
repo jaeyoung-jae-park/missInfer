@@ -2,8 +2,8 @@
 
 
 
-fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercept = F, thres_w = 0, variance=F, conditioning = c("X", "ZX"),
-                         pi.method = c("true", "kernel", "glmnet"), dim.reduction = c("separate", "onlyQ"),
+fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, intercept = T, thres_w = 0, variance=F, conditioning = c("X", "ZX"),
+                         pi.method = c("kernel", "glmnet"), dim.reduction = c("separate", "onlyQ"),
                          supp.pi = NULL, supp.Q = NULL, beta_initial = NULL){
 
   #### variable assignments #####
@@ -90,7 +90,6 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercep
 
 
     }else{
-
 
       mod_w <- glmnet::glmnet(x =  X[, -interest_idx], y = X[,interest_idx], intercept=intercept, weights = b_2nd(X, beta_initial[-1], y_type), lambda = 0) #beta_initial[-1]
       w_est <- coef(mod_w)[-1,]
@@ -231,7 +230,7 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercep
     # print(c(S_bar, I_bar));
 
     if(pi.method %in% c("glmnet", "kernel")){
-      I_bar <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept=intercept, y_type = y_type)
+      I_bar <- fun_I(X=X, interest_var = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept=intercept, y_type = y_type)
       S_bar <- lapply(c(T,F), function(sample.div){
         samples_sub <- make_sub(samples, sampleSplitIndex, sample.div)
 
@@ -240,13 +239,14 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercep
 
           lapply(1:length(thres_w), function(idx){
             nuisance_sample <- nuisance[[1+sample.div]][[1]][[idx]]
-            loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept)
+            loss <- as.matrix(loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept))
             S <- t(loss) %*% w_tilde / sum(sampleSplitIndex == sample.div)
             S
           })
         }else{
           nuisance_sample <- nuisance[[1+sample.div]]
-          loss <- loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept)
+          loss <- as.matrix(loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept))
+          # print(t(as.matrix(loss)))
           S <- as.numeric(t(loss) %*% w_tilde / sum(sampleSplitIndex == sample.div))
           S
         }
@@ -255,12 +255,12 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercep
     }
     # print(c(S_bar, I_bar));
 
-    if(pi.method =="true" & variance == F){
-      nuisance_true$missingness[nuisance_true$missingness < thres_w] <- thres_w
-      I_bar_true <- fun_I(X=X, interest_idx = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept = F, y_type = y_type)
-      S_bar_true <- t(loss_1st_boot(samples, nuisance_true, beta_est =  beta_initial, y_type = y_type, intercept = F)) %*% w_tilde / n
-
-    }else{I_bar_true <- NULL; S_bar_true <- NULL}
+    # if(pi.method =="true" & variance == F){
+    #   nuisance_true$missingness[nuisance_true$missingness < thres_w] <- thres_w
+    #   I_bar_true <- fun_I(X=X, interest_var = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept = F, y_type = y_type)
+    #   S_bar_true <- t(loss_1st_boot(samples, nuisance_true, beta_est =  beta_initial, y_type = y_type, intercept = F)) %*% w_tilde / n
+    #
+    # }else{I_bar_true <- NULL; S_bar_true <- NULL}
 
 
     if(pi.method == "kernel"){
@@ -276,11 +276,12 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1, intercep
         # initial = beta_initial[interest_idx+1,],
         debiased = beta_initial[interest_idx+1,] -
           mean(unlist(S_bar)) / I_bar)
-    }else if(pi.method == "true"){
-      c(
-        # true_initial = beta_initial[interest_idx+1,],
-        true_debiased =  beta_initial[interest_idx+1,] - S_bar_true / I_bar_true)
     }
+    # else if(pi.method == "true"){
+    #   c(
+    #     # true_initial = beta_initial[interest_idx+1,],
+    #     true_debiased =  beta_initial[interest_idx+1,] - S_bar_true / I_bar_true)
+    # }
 
 
 

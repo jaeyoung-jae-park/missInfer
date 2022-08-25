@@ -3,7 +3,7 @@
 #' Estimate coefficients under complex missing mechanisms
 #'
 #' @param X input data matrix.
-#' @param Z surrogate outcome(s). If a surrogate outcome is not available, then Z can be NULL.
+#' @param Z surrogate outcome(s). Z can be a vector or a matrix Default: NULL.
 #' @param y response variable.
 #' @param interest_var variables to be estimated. Default is all the variables of X.
 #' @param intercept intercept (default=TRUE).
@@ -20,18 +20,17 @@
 missInfer <- function(X, Z=NULL, y, interest_var = 1:4, intercept = T, thres_w = 0.01,
                          pi.method = c("kernel", "glmnet"), dim.reduction = c("separate", "onlyQ")
                          ){
-
-  if(!(pi.method %in% c("kernel", "glmnet")) ) stop("pi.method should be either kernel or glmnet")
-  if(!(dim.reduction %in% c("separate", "onlyQ"))) stop("dim.reduction should be either separate or onlyQ")
+  if(sum(class(X) == "matrix")) stop("X should be a matrix.")
+  if(!(pi.method %in% c("kernel", "glmnet")) ) stop("pi.method should be either kernel or glmnet.")
+  if(!(dim.reduction %in% c("separate", "onlyQ"))) stop("dim.reduction should be either separate or onlyQ.")
   if(pi.method == "glmnet") {
     dim.reduction <- "onlyQ"
-    message("When pi.method is glmnet, dim.reduction is set as onlyQ")
+    message("When pi.method is glmnet, the dimension reduction is conducted separately for pi and Q")
   }
 
 
   R <- (!is.na(y))*1
   p <- NCOL(X); n <- NROW(X)
-
 
   conditioning <- ifelse(!is.null(Z), "ZX", "X")
 
@@ -44,8 +43,9 @@ missInfer <- function(X, Z=NULL, y, interest_var = 1:4, intercept = T, thres_w =
   cv.mave <- MAVE::mave.dim(dim.reduction.Q)
   supp.Q <- as.matrix(dim.reduction.Q$dir[[cv.mave$dim.min]])
 
-  supp.pi <- supp.Q
-  if((pi.method == "glmnet") & (dim.reduction == "onlyQ")){
+  # Specify supp.pi by the pi.method and the dim.reduction.
+  supp.pi <- supp.Q #
+  if(pi.method == "glmnet"){
     mod_missingness <- glmnet::cv.glmnet(x = ZX, y = R, intercept = intercept, family="binomial")
     supp.pi <- glmnet::coef.glmnet(mod_missingness, s= 'lambda.min')
   }
@@ -56,7 +56,7 @@ missInfer <- function(X, Z=NULL, y, interest_var = 1:4, intercept = T, thres_w =
   }
 
   samples <- list(n = n, p = p, X = as.matrix(X),
-                     Z = Z, R = R, y=y) # Y2 = NA,
+                     Z = Z, R = R, y=y)
 
   imputed.Q <- predict_imputeQ(training = samples, test = samples,  #training = samples_tr
                                  conditioning = conditioning, supp.Q = supp.Q)

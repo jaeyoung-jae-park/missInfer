@@ -71,8 +71,6 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
   nuisance_true <- list(impute = samples$impute_true, missingness = samples$missing_true)
 
 
-
-
   results_boot <- NULL; results_beta <- NULL;
   if(variance == F){
     #     results_true <- missInfer(samples = samples_re, nuisance_true = nuisance_true, interest_lst = interest_lst,
@@ -81,33 +79,23 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
     #     names(results_true) <- paste0(names(results_true), "_", rep(interest_lst, each = 2))
 
 
-
-    missInfer <- function(X, Z=NULL, y, interest_var = 1:NCOL(X), intercept = T, thres_w = 0.01,
-                          pi.method = c("kernel", "glmnet"), dim.reduction = c("separate", "onlyQ")
-    )
-
     results_glmnet <- missInfer(X = X, y = y, interest_var = 1:p,
                                    intercept = intercept, thres_w =  thres_w, pi.method = "glmnet", dim.reduction = "onlyQ")
-    results_glmnet <- unlist(results_glmnet)
-    names(results_glmnet) <- paste0("glmnet_", names(results_glmnet), "_", rep(interest_lst, each = 2))
+    names(results_glmnet) <- paste0("glmnet_",names(results_glmnet))
 
-    results_beta_x_sep <- missInfer(samples = samples, interest_lst = interest_lst,
-                                       intercept = intercept, thres_w =  thres_w, variance = F, conditioning = "X", pi.method = 'kernel', dim.reduction = "separate",
-                                       supp.Q = supp.Q.X, supp.pi = supp.pi.X)
-    results_beta_x_sep <- unlist(results_beta_x_sep)
-    names(results_beta_x_sep) <- paste0("x_sep_",names(results_beta_x_sep), "_", rep(interest_lst, each=2+length(thres_w)))
+    results_beta_x_sep <- missInfer(X = X, y = y, interest_var = 1:p,
+                                    intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "separate")
+    names(results_beta_x_sep ) <- paste0("x_sep_",names(results_beta_x_sep))
 
-    results_beta_x <- missInfer(samples = samples, interest_lst = interest_lst,
-                                   intercept = intercept, thres_w =  thres_w, variance = F, conditioning = "X", pi.method = 'kernel', dim.reduction = "onlyQ",
-                                   supp.Q = supp.Q.X, supp.pi = supp.Q.X)
-    results_beta_x <- unlist(results_beta_x)
-    names(results_beta_x) <- paste0("x_",names(results_beta_x), "_", rep(interest_lst, each=2+length(thres_w)))
+    results_beta_x <- missInfer(X = X, y = y, interest_var = 1:p,
+                                intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
+    names(results_beta_x ) <- paste0("x_",names(results_beta_x))
 
-    results_beta_xy <- missInfer(samples = samples, interest_lst = interest_lst,
-                                    intercept = intercept, thres_w =  thres_w, variance = F, conditioning = "ZX", pi.method = 'kernel', dim.reduction = 'onlyQ',
-                                    supp.Q = supp.Q.ZX, supp.pi = supp.Q.ZX)
-    results_beta_xy <- unlist(results_beta_xy)
-    names(results_beta_xy) <- paste0("xy_",names(results_beta_xy), "_", rep(interest_lst, each=2+length(thres_w)))
+    results_beta_xy <- missInfer(X = X, Z = Z, y = y, interest_var = 1:p,
+                                 intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
+    names(results_beta_xy ) <- paste0("xy_",names(results_beta_xy))
+
+
 
     results_beta <- c(
       #                      results_true, true_prop.pihat = sum(samples_re$missing_true < 0.005)/n,
