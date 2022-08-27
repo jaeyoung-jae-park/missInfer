@@ -25,9 +25,10 @@ for(n in c(500)){
     cl <- makeCluster(n_cores)
     registerDoParallel(cl, cores = n_cores)
 
-    system.time(res.boot <- foreach(index = 1:500, .packages = c("mgcv", "glmnet", "pROC", "MAVE"), .combine=rbind) %dopar%{
+    system.time(foreach(index = 1:500, .packages = c("mgcv", "glmnet", "pROC", "MAVE")) %dopar%{
       set.seed(index)
       res.boot <- Simulation(p = p, n = n, interest_lst = interest_lst, thres_w = 0.01, y_type = y_type,intercept =T, variance = T, alpha = alpha, missing.rate = missing.rate)
+      save(res.boot, file = paste0(n,"_", p,"_", y_type,"_",missing.rate,".RData"))
     })
     stopCluster(cl)
   }
