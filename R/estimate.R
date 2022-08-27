@@ -20,7 +20,7 @@
 missInfer <- function(X, Z=NULL, y, interest_var = 1:4, intercept = T, thres_w = 0.01,
                          pi.method = c("kernel", "glmnet"), dim.reduction = c("separate", "onlyQ")
                          ){
-  if(sum(class(X) == "matrix")) stop("X should be a matrix.")
+  if(sum(class(X) == "matrix") == 0 ) stop("X should be a matrix.")
   if(!(pi.method %in% c("kernel", "glmnet")) ) stop("pi.method should be either kernel or glmnet.")
   if(!(dim.reduction %in% c("separate", "onlyQ"))) stop("dim.reduction should be either separate or onlyQ.")
   if(pi.method == "glmnet") {

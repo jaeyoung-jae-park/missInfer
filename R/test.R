@@ -64,7 +64,7 @@ sample.generation <- function(p = 8, n = 200, y_type = c("continuous", "binary")
 
 
 ### Looking at the beta ###
-Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4, intercept = F, thres_w = 0, variance = F, alpha=0, missing.rate = 0.5){
+Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4, intercept = F, thres_w = 0.01, variance = F, alpha=0, missing.rate = 0.5){
   samples <- sample.generation(p = p, n= n, y_type = y_type, alpha = alpha, missing.rate =missing.rate)
 
   X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
@@ -100,11 +100,13 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
     results_beta <- c(
       #                      results_true, true_prop.pihat = sum(samples_re$missing_true < 0.005)/n,
       # results_beta_x_sep, results_glmnet, glmnet_prop.pihat = sum(predict(mod_missingness, X, type='response', s = "lambda.min") <0.005)/n,
-      results_beta_x, results_beta_xy, missing.rate= 1-mean(samples$R), frac = mean(samples$y),
-      supp.pi.X = 8, # ifelse(cv.mave.pi.X$dim.min > 0, cv.mave.pi.X$dim.min , p),
-      supp.pi.glmnet = sum(supp.pi.glmnet!=0),
-      supp.Q.X = 5, # ifelse(cv.mave.X$dim.min > 0, cv.mave.X$dim.min , p),
-      supp.Q.ZX = ifelse(cv.mave.ZX$dim.min > 0, cv.mave.ZX$dim.min , p))
+      results_beta_x_sep, results_glmnet,
+      results_beta_x, results_beta_xy, missing.rate= 1-mean(samples$R), frac = mean(samples$y, na.rm = T) #,
+      # supp.pi.X = 8, # ifelse(cv.mave.pi.X$dim.min > 0, cv.mave.pi.X$dim.min , p),
+      # supp.pi.glmnet = sum(supp.pi.glmnet!=0),
+      # supp.Q.X = 5, # ifelse(cv.mave.X$dim.min > 0, cv.mave.X$dim.min , p),
+      # supp.Q.ZX = ifelse(cv.mave.ZX$dim.min > 0, cv.mave.ZX$dim.min , p)
+      )
 
     # results_beta <- results_true
   }else if(variance == T){
