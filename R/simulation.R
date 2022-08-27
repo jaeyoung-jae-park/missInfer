@@ -109,7 +109,7 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
       )
 
     # results_beta <- results_true
-  }else if(variance == T){
+  }else if(variance == T){ # bootstrap
     no_boot <- 500
 
     # results_boot <- foreach(boot = 1:no_boot, .packages = c("mgcv", "glmnet", "MAVE"), .combine = rbind) %dopar%{
@@ -184,48 +184,3 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
 
 
 
-# for(n in c(500)){ # ,350, 500 # 500, 650
-#   sample.size <- n; p <- 8; interest_lst <- 1:8; y_type <- "binary"; variance <- F; alpha <- -1
-#   missing.rate <- 0.5
-#   # sampling_lower <- AAA+1; sampling_upper <- BBB
-#
-#
-#
-#   if(variance == F){
-#     library(doParallel);
-#     closeAllConnections()
-#     n_cores <-  detectCores(all.tests = FALSE, logical = TRUE) # as.integer(Sys.getenv("SLURM_CPUS_ON_NODE"))
-#     print(n_cores)
-#     cl <- makeCluster(n_cores)
-#     registerDoParallel(cl, cores = n_cores)
-#
-#     system.time(res <- foreach(index = 1:1, .packages = c("mgcv", "glmnet", "pROC", "MAVE"), .combine=rbind) %dopar%{
-#
-#
-#       set.seed(index)
-#       Simulation(p = p, n = n, interest_lst = interest_lst, thres_w = .01, y_type = y_type, intercept = T, variance = F, alpha = alpha, missing.rate = missing.rate)
-#
-#       # simulation.result
-#
-#     })
-#     # save(res, file=paste0("Simulations/Inference/boot_120821/results/Sim_",sample.size,"_",p,"_", y_type,"_",alpha,"_",missing.rate,"_120821.RData"))
-#     stopCluster(cl)
-#   }else{
-#
-#     lapply(BBB:(BBB), function(AAA){
-#       set.seed(AAA)
-#       res.boot <- Simulation(p = p, n = n, interest_lst = interest_lst, thres_w = 0.01, y_type = y_type,intercept =T, variance = T, alpha = alpha, missing.rate = missing.rate)
-#       # res.boot
-#       # })
-#       save(res.boot, file=paste0("Simulations/Inference/boot_120821/results/n",n,"_p",p,"_", y_type,"_90/Sim_",sample.size,"_",p,"_", y_type,"_",alpha, "_boot_", AAA,"_",missing.rate,"_120821.RData"))
-#     })
-#
-#
-#   }
-#   #
-#
-#
-#
-# }
-#
-#
