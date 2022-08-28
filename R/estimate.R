@@ -2,21 +2,29 @@
 
 #' Estimate coefficients under complex missing mechanisms
 #'
-#' @param X input data matrix.
-#' @param Z surrogate outcome(s). Z can be a vector or a matrix Default: NULL.
-#' @param y response variable.
-#' @param interest_var variables to be estimated. Default is all the variables of X.
-#' @param intercept intercept (default=TRUE).
-#' @param thres_w threshold to avoid too small inverse pi value.
-#' @param pi.method method for estimating the inverse pi function. The kernel method is default but the glmnet method is also available. Should be either "kernel" or "glmnet".
-#' @param dim.reduction models for estimating a reduced dimension. The imputation model is default but both nuisance models are used for the dimension reduction. Should be either "separate" or "onlyQ".
+#' @param X Input data matrix
+#' @param Z Surrogate outcome(s) Z can be a vector or a matrix (default: NULL)
+#' @param y Response variable
+#' @param interest_var Variables to be debiased (default: the first four variables)
+#' @param intercept Intercept (default=TRUE)
+#' @param thres_w Threshold to avoid too small inverse pi value (default: 0.01)
+#' @param pi.method Method for estimating the inverse pi function. The kernel method is default but the glmnet method is also available. Should be either "kernel" or "glmnet".
+#' @param dim.reduction Models for estimating a reduced dimension. The imputation model is default but both nuisance models are used for the dimension reduction. Should be either "separate" or "onlyQ".
 #'
 #' @return a list that contains the initial coefficients, debaised coefficients, dimensionality of reduced dimension
 #' @export
 #'
 #' @examples
-#' x <- "alfa,bravo,charlie,delta"
-#' strsplit1(x, split = ",")
+#' # Sample data generation
+#' set.seed(1823)
+#' p <- 8; interest_lst <- 1:8; y_type <- "binary"; alpha <- -1;
+#' thres_w <- 0.01; missing.rate <- 0.5
+#' samples <- sample.generation(p = p, n= n, y_type = y_type, alpha = alpha, missing.rate =missing.rate)
+#' X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
+#'
+#' # Obtain debiased estimators
+#' missInfer(X = X, Z = Z, y = y, interest_var = 1:p, intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
+
 missInfer <- function(X, Z=NULL, y, interest_var = 1:4, intercept = T, thres_w = 0.01,
                          pi.method = c("kernel", "glmnet"), dim.reduction = c("separate", "onlyQ")
                          ){

@@ -57,16 +57,6 @@ ks.missing <- function(xx, yy, samp_size, xx.test){ # rr should be T/F values
 }
 
 
-##
-# ks(X[R==1,], Y2[R==1] >= Z[R==1] + 5, X[R==0,])
-
-### soft thresholding
-# soft.Thresh <- function(beta, thresh){
-#   # stopifnot(length(beta)==length(thresh))
-#   return((beta-thresh)*(beta > thresh) + (beta+thresh)*(beta< -thresh))
-# }
-
-
 ## Propensity score
 fun.ps.model <- function(X, Z, R, model.type){
   if(sum(R==0)> 0){
@@ -102,8 +92,6 @@ get.ps <- function(model=NULL, X, Z){
 getNuisance <- function(data, outcome=c('R', 'y'), method=c('lm', 'glmnet', 'kernel', 'density.ratio', 'true'), dimension.reduction = c("None", 'true', 'Screening', "slicedIR"),
                         sampleSplitIndex = NULL, Formula = NULL, predictAll = FALSE, screening.method="SIRS"){
   # if outcome = R, provide propensity score; if outcome = y, provide the conditional expectation
-
-
   data$predictor <- cbind(data$X, Z=data$Z)
   p <- dim(data$predictor)[2]
   size <- dim(data$predictor)[1]
@@ -136,7 +124,6 @@ getNuisance <- function(data, outcome=c('R', 'y'), method=c('lm', 'glmnet', 'ker
       supp <- (ans <= floor(p/2))
     }
   } else if(dimension.reduction == "SlicedIR"){
-    # ans <- dr::dr(outcome ~ predictor, data = dataTrain, method = 'sir')
     supp.beta <- LassoSIR::LassoSIR(X=dataTrain$predictor, Y=factor(dataTrain$outcome), categorical = T, screening = TRUE, no.dim=1)
     supp <- abs(supp.beta$beta)>0
   } else if(dimension.reduction == "true"){
@@ -207,21 +194,6 @@ getNuisance <- function(data, outcome=c('R', 'y'), method=c('lm', 'glmnet', 'ker
       prediction <- w_pred*rho/(w_pred*rho +(1-rho))
     }
   }
-  # else if (method == "true"){
-  #   if (outcome == "R"){
-  #     if(p <= 8) {
-  #       beta_R <- c(1, 0, -1, 0, 0.5, 0, -0.5, 0)
-  #       beta_R <- c(beta_R[1:(p-1)], 0)
-  #     }else{
-  #       beta_R <- c(1, 0, -1, 0, 0.5, 0, -0.5, 0, rep(0, times=(p-1)-8), 0)
-  #     }
-  #
-  #     prediction <- 1/(1+exp(-dataPredict %*% beta_R))
-  #   }else if (outcome == "y"){
-  #     beta0 <- c(1,-1,0.5,-0.5, rep(0, times=(p-1)-4))
-  #     prediction <- 1/(1+exp(-(data$X%*%beta0)) )
-  #   }
-  # }
 
   prediction
 }
@@ -246,19 +218,6 @@ truncated <- function(values, thres = 0.1){
   return(values)
 }
 
-
-# loss_1st <- function(samples, nuisance, beta_est, method = c("kernel", "glmnet", "true"), y_type){
-#
-#   X <- samples$X; R <- samples$R; y <- samples$y;
-#   missingness <- nuisance$missingness; impute <- nuisance$impute; missingness_glmnet <- nuisance$missingness_glmnet
-#
-#   if(method %in% c('kernel', 'true')){
-#     t(X) %*% ((impute  - y )*R/missingness) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
-#   }else if(method=="glmnet"){
-#     t(X) %*% ((impute  - y )*R/missingness_glmnet) + t(X) %*% ( b_1st(X, beta_est, y_type)-impute)
-#   }
-#
-# }
 
 loss_1st_boot <- function(samples, nuisance, beta_est, y_type, intercept){
 

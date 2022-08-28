@@ -38,26 +38,17 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
 
 
   if(pi.method %in% c("glmnet", "kernel")){
-    ### STEP 1 ####
-    # dim.reduction.Q <- mave(y ~ ., data = data.frame(y=y[R==1], combined_dataset[R==1,]), method =
-    #                           "KSIR") #"KSIR"
-    # cv.mave <- mave.dim(dim.reduction.Q)
 
-
-    ### STEP 2 ####
-    # print(combined_dataset)
-
+    ### STEP - obtain an imputation model and initial coefficients ####
 
     if(is.null(beta_initial)){
       if(!is.null(supp.Q)){
         imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]) %*% supp.Q, yy = y[R==1], xx.test = as.matrix(combined_dataset) %*% supp.Q)
-        #### here
       }else{
         imputed_entire <- ks(xx=as.matrix(combined_dataset[R==1,]), yy = y[R==1], xx.test = as.matrix(combined_dataset))
       }
 
       beta_initial <- get_initial(samples = samples, impute = imputed_entire, intercept = intercept)
-      # beta_initial <- coef(mod_impute)
     }
 
 
@@ -66,11 +57,9 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
 
   sim_results <- lapply(interest_var, function(interest_idx){
 
+    ### STEP 2 - obtain w tilde ####
 
-
-    ### STEP 3 ####
-
-    if(intercept){ ### Still working
+    if(intercept){
 
       if(interest_idx == 0){
         mod_w <- glmnet::glmnet(x =  X, y = rep(1, nrow(X)), intercept=FALSE, weights = b_2nd(cbind(1, X), beta_initial, y_type), lambda = 0)
@@ -105,15 +94,14 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
 
     # }
 
-    # set.seed(1823)
+
+    ### STEP 3 - cross-fitting ####
     if(pi.method %in% c("glmnet", "kernel")){
-      ### STEP 4 ####
       sampleSplitIndex <- rep(F,n)
       sampleT <- sample(which(R == 1), size = round(sum(R==1)/2))
       sampleF <- sample(which(R == 0), size = round(sum(R==0)/2))
       sampleSplitIndex[c(sampleT, sampleF)] <- T
 
-      ### STEP 5 ####
 
       nuisance <- lapply(c(T,F), function(sample.div){
 
@@ -146,14 +134,9 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
 
 
           if(dim.reduction=="separate"){
-            # dim.reduction.pi <- mave(R ~ ., data = data.frame(R=R_sub, combined_sub), method ="KSIR") #KSIR
-            # cv.mave.pi <- mave.dim(dim.reduction.pi)
             if(!is.null(supp.pi)){
-              # supp.pi <- as.matrix(dim.reduction.pi$dir[[cv.mave.pi$dim.min]])
-              # supp.pi <- as.matrix(dim.reduction.pi$dir[[length(dim.reduction.pi$dir)]])
               pi_conditional <- ks(xx = as.matrix(combined_sub) %*% supp.pi, yy=R_sub, xx.test = as.matrix(combined_opp) %*% supp.pi)
             }else{
-              # supp.pi <- combined_sub
               pi_conditional <- ks(xx = as.matrix(combined_sub), yy=R_sub, xx.test = as.matrix(combined_opp))
             }
 
@@ -161,7 +144,6 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
               tmp <- pi_conditional
               thres_below <- (tmp < thres)
               tmp[thres_below  ] <- thres
-              #               list(tmp = tmp, extremely_small = sum(thres_below))
               tmp
             })
 
@@ -220,21 +202,15 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
           list(impute = impute_sub, missingness =  missingness_glmnet[sampleSplitIndex!=sample.div,])
         }
 
-
-
-
-
       })
     }
 
-    # print(c(S_bar, I_bar));
-
+    ### STEP 4 - obtain function values I and S ####
     if(pi.method %in% c("glmnet", "kernel")){
       I_bar <- fun_I(X=X, interest_var = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept=intercept, y_type = y_type)
       S_bar <- lapply(c(T,F), function(sample.div){
         samples_sub <- make_sub(samples, sampleSplitIndex, sample.div)
 
-        # S_ks <-
         if(pi.method =='kernel'){
 
           lapply(1:length(thres_w), function(idx){
@@ -246,21 +222,12 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
         }else{
           nuisance_sample <- nuisance[[1+sample.div]]
           loss <- as.matrix(loss_1st_boot(samples_sub, nuisance_sample, beta_est = beta_initial, y_type = y_type, intercept = intercept))
-          # print(t(as.matrix(loss)))
           S <- as.numeric(t(loss) %*% w_tilde / sum(sampleSplitIndex == sample.div))
           S
         }
 
       })
     }
-    # print(c(S_bar, I_bar));
-
-    # if(pi.method =="true" & variance == F){
-    #   nuisance_true$missingness[nuisance_true$missingness < thres_w] <- thres_w
-    #   I_bar_true <- fun_I(X=X, interest_var = interest_idx, beta_tilde = beta_initial, w_hat = w_est, intercept = F, y_type = y_type)
-    #   S_bar_true <- t(loss_1st_boot(samples, nuisance_true, beta_est =  beta_initial, y_type = y_type, intercept = F)) %*% w_tilde / n
-    #
-    # }else{I_bar_true <- NULL; S_bar_true <- NULL}
 
 
     if(pi.method == "kernel"){
@@ -268,26 +235,13 @@ fun_debias <- function(samples, nuisance_true = NULL, interest_var = 1:4, interc
         prop.pihat <- sapply(1:length(thres_w), function(idx){ sum(sapply(lapply(lapply(nuisance, '[[',1), '[[',idx),'[[',3))/n})
       }else{prop.pihat <- NA}
       c(
-        # initial = beta_initial[interest_idx+1,],
         debiased = beta_initial[interest_idx+1,]-
           sapply(1:length(thres_w), function(idx){colMeans(do.call('rbind', lapply(S_bar, "[[", idx)))}) / I_bar)
     }else if(pi.method == "glmnet"){
       c(
-        # initial = beta_initial[interest_idx+1,],
         debiased = beta_initial[interest_idx+1,] -
           mean(unlist(S_bar)) / I_bar)
     }
-    # else if(pi.method == "true"){
-    #   c(
-    #     # true_initial = beta_initial[interest_idx+1,],
-    #     true_debiased =  beta_initial[interest_idx+1,] - S_bar_true / I_bar_true)
-    # }
-
-
-
-
-
-
   })
 
 }

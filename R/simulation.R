@@ -9,11 +9,7 @@ sample.generation <- function(p = 8, n = 200, y_type = c("continuous", "binary")
   ## Covariates
   X <- matrix(NA, nrow = n, ncol = p)
   var_p <- diag(p)
-  # var_p2 <- 1.5*0.9^(0:7)
-  # var_p2 <- matrix(rbind(var_p2, do.call("rbind", lapply(1:7, function(idx){
-  #   1.5 * 0.9^c(idx:1, 0:(7-idx))
-  # }))), ncol=8)
-  # var_p2 <- diag(rep(c(2,1), each=4))
+
   var_p2 <- var_p*1.5
 
   X[R==0,] <- mgcv::rmvn(sum(R==0), rep(0,p), V=var_p); # D1
@@ -55,29 +51,13 @@ sample.generation <- function(p = 8, n = 200, y_type = c("continuous", "binary")
 }
 
 ### Simulation ####
-
-##### SIMULATION SETTING #####
-
-# load estimate, debias, sample.generation
-
-# library(mgcv); library(glmnet); library(parallel); library(MAVE)
-
-
-### Looking at the beta ###
 Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4, intercept = F, thres_w = 0.01, variance = F, alpha=0, missing.rate = 0.5){
   samples <- sample.generation(p = p, n= n, y_type = y_type, alpha = alpha, missing.rate =missing.rate)
 
   X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
-  nuisance_true <- list(impute = samples$impute_true, missingness = samples$missing_true)
-
 
   results_boot <- NULL; results_beta <- NULL;
   if(variance == F){
-    #     results_true <- missInfer(samples = samples_re, nuisance_true = nuisance_true, interest_lst = interest_lst,
-    #                                  intercept = intercept, thres_w =  thres_w, variance = F,  conditioning = "", pi.method = "true", dim.reduction = "")
-    #     results_true <- unlist(results_true)
-    #     names(results_true) <- paste0(names(results_true), "_", rep(interest_lst, each = 2))
-
 
     results_glmnet <- missInfer(X = X, y = y, interest_var = 1:p,
                                    intercept = intercept, thres_w =  thres_w, pi.method = "glmnet", dim.reduction = "onlyQ")
@@ -98,21 +78,11 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
 
 
     results_beta <- c(
-      #                      results_true, true_prop.pihat = sum(samples_re$missing_true < 0.005)/n,
-      # results_beta_x_sep, results_glmnet, glmnet_prop.pihat = sum(predict(mod_missingness, X, type='response', s = "lambda.min") <0.005)/n,
       results_beta_x_sep, results_glmnet,
       results_beta_x, results_beta_xy, missing.rate= 1-mean(samples$R), frac = mean(samples$y, na.rm = T) #,
-      # supp.pi.X = 8, # ifelse(cv.mave.pi.X$dim.min > 0, cv.mave.pi.X$dim.min , p),
-      # supp.pi.glmnet = sum(supp.pi.glmnet!=0),
-      # supp.Q.X = 5, # ifelse(cv.mave.X$dim.min > 0, cv.mave.X$dim.min , p),
-      # supp.Q.ZX = ifelse(cv.mave.ZX$dim.min > 0, cv.mave.ZX$dim.min , p)
       )
-
-    # results_beta <- results_true
   }else if(variance == T){ # bootstrap
     no_boot <- 500
-
-    # results_boot <- foreach(boot = 1:no_boot, .packages = c("mgcv", "glmnet", "MAVE"), .combine = rbind) %dopar%{
     results_boot <- do.call("rbind", lapply(1:no_boot, function(boot){
       print(paste0("boot number: ",boot))
       set.seed(boot)
@@ -122,9 +92,7 @@ Simulation <- function(p = 8, n = 200, y_type = 'continuous', interest_lst = 1:4
         boot_idx <- sample(n, n, replace = T)
 
         samples_boot <- list(n = n, p = p, X = samples_re$X[boot_idx,], Z = samples_re$Z[boot_idx],
-                             Y2 = samples_re$Y2[boot_idx],  R = samples_re$R[boot_idx], y=samples_re$y[boot_idx],
-                             impute_true = samples_re$impute_true[boot_idx], missingness_true = samples_re$missing_true[boot_idx])
-        nuisance_true_boot <- list(impute = samples_re$impute_true[boot_idx], missingness = samples_re$missing_true[boot_idx])
+                             Y2 = samples_re$Y2[boot_idx],  R = samples_re$R[boot_idx], y=samples_re$y[boot_idx])
 
         tryCatch({
           results_glmnet_boot <- missInfer(samples = samples_boot,interest_lst = interest_lst,
