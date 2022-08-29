@@ -15,7 +15,7 @@ Imports:
           mave
           
 # Example
-...
+```
 
 ### Generate data
 set.seed(1823)
@@ -26,6 +26,7 @@ X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
 
 ### Obtain debiased estimators
 missInfer(X = X, Z = Z, y = y, interest_var = interest_lst, intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
+```
 
 # Reference
 Jaeyoung Park, Muxuan Liang, Yingqi Zhao, Xiang Zhong (2022). Efficient surrogate-assisted inference for patient-reported outcome with complex missing mechanism.
