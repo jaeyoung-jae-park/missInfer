@@ -24,7 +24,7 @@ missInfer(
 
 \item{interest_var}{Variables to be debiased (default: the first four variables)}
 
-\item{intercept}{Intercept (default=TRUE)}
+\item{intercept}{Intercept (default: TRUE)}
 
 \item{thres_w}{Threshold to avoid too small inverse pi value (default: 0.01)}
 
