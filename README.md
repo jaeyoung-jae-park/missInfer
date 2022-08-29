@@ -24,7 +24,7 @@ thres_w <- 0.01; missing.rate <- 0.5
 samples <- sample.generation(p = p, n= n, y_type = y_type, alpha = alpha, missing.rate =missing.rate)
 X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
 
-# Obtain debiased estimators
+### Obtain debiased estimators
 missInfer(X = X, Z = Z, y = y, interest_var = interest_lst, intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
 
 # Reference
