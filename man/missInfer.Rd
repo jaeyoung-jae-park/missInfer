@@ -39,13 +39,13 @@ a list that contains the initial coefficients, debaised coefficients, dimensiona
 Estimate coefficients under complex missing mechanisms
 }
 \examples{
-# Sample data generation
+# Generate data
 set.seed(1823)
-p <- 8; interest_lst <- 1:8; y_type <- "binary"; alpha <- -1;
+n <- 200; p <- 8; interest_lst <- 1:8; y_type <- "binary"; alpha <- -1;
 thres_w <- 0.01; missing.rate <- 0.5
 samples <- sample.generation(p = p, n= n, y_type = y_type, alpha = alpha, missing.rate =missing.rate)
 X <- samples$X; Z <- samples$Z; y <- samples$y # R <- samples$R;
 
 # Obtain debiased estimators
-missInfer(X = X, Z = Z, y = y, interest_var = 1:p, intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
+missInfer(X = X, Z = Z, y = y, interest_var = interested_lst, intercept = intercept, thres_w =  thres_w, pi.method = "kernel", dim.reduction = "onlyQ")
 }
