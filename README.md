@@ -16,6 +16,8 @@ Imports:
           
 # Example
 ```
+### Get details using the help function
+?missInfer
 
 ### Generate data
 set.seed(1823)
