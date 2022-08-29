@@ -6,7 +6,7 @@
 #' @param Z Surrogate outcome(s) Z can be a vector or a matrix (default: NULL)
 #' @param y Response variable
 #' @param interest_var Variables to be debiased (default: the first four variables)
-#' @param intercept Intercept (default=TRUE)
+#' @param intercept Intercept (default: TRUE)
 #' @param thres_w Threshold to avoid too small inverse pi value (default: 0.01)
 #' @param pi.method Method for estimating the inverse pi function. The kernel method is default but the glmnet method is also available. Should be either "kernel" or "glmnet".
 #' @param dim.reduction Models for estimating a reduced dimension. The imputation model is default but both nuisance models are used for the dimension reduction. Should be either "separate" or "onlyQ".
