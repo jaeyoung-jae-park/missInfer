@@ -4,9 +4,9 @@
 
 Version: 1.0.0
 
-Author: Jaeyoung Park <jaeyoungp@uchicago.edu>
+Author: Jaeyoung Park <jaeyoung.park@ucf.edu>
 
-Maintainer: Jaeyoung Park <jaeyoungp@uchicago.edu>
+Maintainer: Jaeyoung Park <jaeyoung.park@ucf.edu>
 
 Description: The package implements a surrogate-assisted estimation in the presence of complex missing mechanisms. The package provides not only the propensity method but also our proposed method.
 
